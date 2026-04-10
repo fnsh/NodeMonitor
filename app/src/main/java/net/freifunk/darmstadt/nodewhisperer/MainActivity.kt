@@ -38,6 +38,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -48,10 +49,14 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -64,6 +69,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import net.freifunk.darmstadt.nodewhisperer.models.GluonNode
 import net.freifunk.darmstadt.nodewhisperer.models.ScanResultListModel
 import net.freifunk.darmstadt.nodewhisperer.models.WifiScanResult
@@ -396,14 +402,16 @@ fun activityDesign(
                     }
                 }
             ) { innerPadding ->
-                LazyColumn(
-                    modifier = Modifier
-                        .padding(innerPadding),
-                ) {
-                    itemsIndexed(scanResultsList.scanResults) { index, item ->
-                        ScanResultListElement(
-                            node = item
-                        )
+                Column(modifier = Modifier.padding(innerPadding)) {
+                    ScanStatusBar(wifiScanService)
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        itemsIndexed(scanResultsList.scanResults) { index, item ->
+                            ScanResultListElement(
+                                node = item
+                            )
+                        }
                     }
                 }
             }
@@ -541,6 +549,70 @@ fun NodeInfoDialogProperty(name: String, content: String) {
             text = content,
             textAlign = TextAlign.Start,
         )
+    }
+}
+
+@Composable
+fun ScanStatusBar(wifiScanService: WifiScanService) {
+    val isEnabled = wifiScanService.scanningEnabled.value
+    val lastTimestamp = wifiScanService.lastScanTimestamp.value
+    val barColor = MaterialTheme.colorScheme.secondary
+
+    if (!isEnabled) {
+        return
+    }
+
+    if (lastTimestamp == null) {
+        ScanStatusRow(
+            text = stringResource(R.string.scan_status_waiting),
+            color = barColor
+        )
+        return
+    }
+
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1000L)
+            now = System.currentTimeMillis()
+        }
+    }
+
+    val elapsedSec = ((now - lastTimestamp) / 1000).toInt()
+    val elapsedText = if (elapsedSec < 60) {
+        stringResource(R.string.scan_status_seconds, elapsedSec)
+    } else {
+        stringResource(R.string.scan_status_minutes, elapsedSec / 60)
+    }
+
+    ScanStatusRow(
+        text = stringResource(R.string.scan_status_last_scan, elapsedText),
+        color = barColor
+    )
+}
+
+@Composable
+fun ScanStatusRow(text: String, color: Color) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        LinearProgressIndicator(
+            modifier = Modifier.fillMaxWidth(),
+            color = color,
+            trackColor = color.copy(alpha = 0.3f)
+        )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                modifier = Modifier.align(Alignment.CenterEnd),
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 

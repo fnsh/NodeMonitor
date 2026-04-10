@@ -21,6 +21,7 @@ class WifiScanService(context: Context) {
 
     var scanningEnabled: MutableState<Boolean> = mutableStateOf(false)
     var scanningPaused: MutableState<Boolean> = mutableStateOf(false)
+    var lastScanTimestamp: MutableState<Long?> = mutableStateOf(null)
     val wifiScanReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val success = intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false)
@@ -60,6 +61,7 @@ class WifiScanService(context: Context) {
         if (this.scanningPaused.value || !this.scanningEnabled.value)
             return
 
+        lastScanTimestamp.value = System.currentTimeMillis()
         wifiScanServiceResultReceiver?.onScanResultUpdate(wifiScanResults)
         startScanIteration()
     }
@@ -93,6 +95,7 @@ class WifiScanService(context: Context) {
 
         scanningEnabled.value = true
         scanningPaused.value = false
+        lastScanTimestamp.value = null
         startScanIteration()
     }
 
@@ -100,6 +103,7 @@ class WifiScanService(context: Context) {
         Log.d("WifiScanService", "Stop scanning")
         scanningEnabled.value = false
         scanningPaused.value = false
+        lastScanTimestamp.value = null
         if (receiverRegistered) {
             context.unregisterReceiver(wifiScanReceiver)
             receiverRegistered = false
