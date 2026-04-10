@@ -31,4 +31,5 @@
     <string name="scan_status_waiting">Warte auf Scan\u2026</string>
     <string name="scan_status_seconds">%d Sek.</string>
     <string name="scan_status_minutes">%d Min.</string>
+    <string name="wifi_scan_throttled">Wi-Fi Scan Drosselung des Systems aktiv</string>
 </resources>
