@@ -68,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import net.freifunk.darmstadt.nodewhisperer.models.GluonNode
@@ -88,7 +89,7 @@ import java.io.FileNotFoundException
 
 class MainActivity : ComponentActivity() {
     val scanResultListModel = ScanResultListModel()
-    val wifiScanService = WifiScanService(this)
+    val wifiScanService = WifiScanService(this, lifecycleScope)
     val communityService = CommunityService(this)
     private val wifiScanReceiver = object : WifiScanServiceResultReceiver {
         override fun onScanResultUpdate(wifiScanResults: List<WifiScanResult>) {

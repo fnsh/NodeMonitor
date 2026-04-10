@@ -7,13 +7,22 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.util.Log
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import net.freifunk.darmstadt.nodewhisperer.models.WifiScanResult
 
-class WifiScanService(context: Context) {
+class WifiScanService(context: Context, private val scope: CoroutineScope) {
+    companion object {
+        const val THROTTLED_SCAN_INTERVAL_SEC = 30
+    }
+
     private val context: Context = context
     var receiverRegistered: Boolean = false
     var scanning: Boolean = false
@@ -22,6 +31,8 @@ class WifiScanService(context: Context) {
     var scanningEnabled: MutableState<Boolean> = mutableStateOf(false)
     var scanningPaused: MutableState<Boolean> = mutableStateOf(false)
     var lastScanTimestamp: MutableState<Long?> = mutableStateOf(null)
+    var scanThrottleEnabled: MutableState<Boolean> = mutableStateOf(false)
+    private var scanJob: Job? = null
     val wifiScanReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val success = intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false)
@@ -79,8 +90,20 @@ class WifiScanService(context: Context) {
         this.wifiScanServiceResultReceiver = null
     }
 
+    private fun checkThrottleEnabled() {
+        scanThrottleEnabled.value = getManager().isScanThrottleEnabled
+    }
+
     private fun startScanIteration() {
-        getManager().startScan()
+        scanJob?.cancel()
+        if (scanThrottleEnabled.value) {
+            scanJob = scope.launch {
+                delay(THROTTLED_SCAN_INTERVAL_SEC * 1000L)
+                getManager().startScan()
+            }
+        } else {
+            getManager().startScan()
+        }
     }
 
     fun startScanning() {
@@ -96,7 +119,8 @@ class WifiScanService(context: Context) {
         scanningEnabled.value = true
         scanningPaused.value = false
         lastScanTimestamp.value = null
-        startScanIteration()
+        checkThrottleEnabled()
+        getManager().startScan()
     }
 
     fun stopScanning() {
@@ -104,6 +128,7 @@ class WifiScanService(context: Context) {
         scanningEnabled.value = false
         scanningPaused.value = false
         lastScanTimestamp.value = null
+        scanJob?.cancel()
         if (receiverRegistered) {
             context.unregisterReceiver(wifiScanReceiver)
             receiverRegistered = false
@@ -113,11 +138,13 @@ class WifiScanService(context: Context) {
     fun pauseScanning() {
         Log.d("WifiScanService", "Pause scanning")
         scanningPaused.value = true
+        scanJob?.cancel()
     }
 
     fun resumeScanning() {
         Log.d("WifiScanService", "Resume scanning")
         scanningPaused.value = false
+        checkThrottleEnabled()
         startScanIteration()
     }
 }
