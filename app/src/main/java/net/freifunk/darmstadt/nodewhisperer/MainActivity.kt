@@ -324,7 +324,7 @@ fun getIconForNodeStatus(node: GluonNode): ImageVector {
 @Composable
 fun activityDesign(
     activity: MainActivity,
-    wifiScanService: WifiScanService? = null,
+    wifiScanService: WifiScanService,
     scanResultsList: ScanResultListModel = ScanResultListModel()
 ) {
     NodeWhispererTheme {
@@ -374,13 +374,13 @@ fun activityDesign(
                     ExtendedFloatingActionButton(
                         onClick = {
                             if (activity.haveAllPermissions()) {
-                                toggleScanState(wifiScanService!!, scanResultsList)
-                            } else if (wifiScanService != null && !wifiScanService.scanningEnabled.value) {
+                                toggleScanState(wifiScanService, scanResultsList)
+                            } else if (!wifiScanService.scanningEnabled.value) {
                                 activity.permissionToast()
                             }
                         },
                         containerColor =
-                        if (wifiScanService!!.scanningEnabled.value)
+                        if (wifiScanService.scanningEnabled.value)
                             MaterialTheme.colorScheme.errorContainer
                         else
                             MaterialTheme.colorScheme.primary
@@ -392,7 +392,7 @@ fun activityDesign(
                         )
                         Text(
                             text =
-                            if (wifiScanService!!.scanningEnabled.value)
+                            if (wifiScanService.scanningEnabled.value)
                                 stringResource(R.string.fab_scan_stop)
                             else
                                 stringResource(R.string.fab_scan_start),
