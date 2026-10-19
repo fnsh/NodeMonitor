@@ -91,7 +91,18 @@ class WifiScanService(context: Context, private val scope: CoroutineScope) {
     }
 
     private fun checkThrottleEnabled() {
-        scanThrottleEnabled.value = getManager().isScanThrottleEnabled
+        scanThrottleEnabled.value = when {
+            /* Android 12+: queryable via isScanThrottleEnabled() */
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> getManager().isScanThrottleEnabled
+            /* Android 11: isScanThrottleEnabled() always returns true ignoring developer options */
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> true
+            /* Android 10: settable via developer options, but not queryable */
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> true
+            /* Android 9: always enabled */
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.P -> true
+            /* Before: no throttling */
+            else -> false
+        }
     }
 
     private fun startScanIteration() {
