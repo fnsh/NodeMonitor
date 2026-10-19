@@ -1,19 +1,47 @@
 package net.freifunk.darmstadt.nodewhisperer.models
 
 import android.net.wifi.ScanResult
+import android.os.Build
 import android.util.Log
 
 class WifiScanResult {
+    class InformationElement(val id: Int, val bytes: ByteArray)
+
     var ssid: String
     var bssid: String
-    var informationElements: List<ScanResult.InformationElement> = listOf()
+    var informationElements: List<InformationElement> = listOf()
     var rssi: Int
 
     constructor(scanResult: ScanResult) {
         bssid = scanResult.BSSID
         ssid = scanResult.SSID
-        informationElements = scanResult.informationElements
+        informationElements = readInformationElements(scanResult)
         rssi = scanResult.level
+    }
+
+    private fun readInformationElements(scanResult: ScanResult): List<InformationElement> {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return scanResult.informationElements.map {
+                val buffer = it.bytes
+                val elementBytes = ByteArray(buffer.remaining())
+                buffer.get(elementBytes)
+                InformationElement(it.id, elementBytes)
+            }
+        }
+
+        /* Before API 30, the elements are only exposed through the hidden informationElements field */
+        return try {
+            val elements = ScanResult::class.java.getField("informationElements").get(scanResult) as Array<*>?
+            elements.orEmpty().filterNotNull().map {
+                InformationElement(
+                    it.javaClass.getField("id").getInt(it),
+                    it.javaClass.getField("bytes").get(it) as ByteArray
+                )
+            }
+        } catch (e: Exception) {
+            Log.w("WifiScanResult", "Unable to read Information Elements", e)
+            emptyList()
+        }
     }
 
     @OptIn(ExperimentalStdlibApi::class)
@@ -22,10 +50,7 @@ class WifiScanResult {
             /* Filter Vendor Specific Elements */
             it.id == 221
         }.map {
-            /* Map Vendor Specific Elements to ByteArray */
-            val elementBytes = ByteArray(it.bytes.remaining())
-            it.bytes.get(elementBytes)
-            elementBytes
+            it.bytes
         }.filter {
             /* Filter for Gluon Elements */
             it.size >= 4 && it[0] == 0x00.toByte() && it[1] == 0x20.toByte() && it[2] == 0x91.toByte() && it[3] == 0x04.toByte()
