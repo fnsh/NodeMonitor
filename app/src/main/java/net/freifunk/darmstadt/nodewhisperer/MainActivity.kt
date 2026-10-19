@@ -12,6 +12,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.background
@@ -46,6 +47,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -74,6 +76,7 @@ import net.freifunk.darmstadt.nodewhisperer.services.CommunityService
 import net.freifunk.darmstadt.nodewhisperer.services.NodeStatusService
 import net.freifunk.darmstadt.nodewhisperer.services.WifiScanService
 import net.freifunk.darmstadt.nodewhisperer.services.WifiScanServiceResultReceiver
+import net.freifunk.darmstadt.nodewhisperer.ui.theme.LocalCustomColorsPalette
 import net.freifunk.darmstadt.nodewhisperer.ui.theme.NodeWhispererTheme
 import org.json.JSONArray
 import org.json.JSONException
@@ -105,6 +108,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        enableEdgeToEdge()
 
         setContent {
             activityDesign(this, wifiScanService, scanResultListModel)
@@ -301,9 +306,9 @@ fun getSiteDomainString(node: GluonNode): String? {
 @Composable
 fun getColorForNodeStatus(node: GluonNode): Color {
     return when (NodeStatusService.getNodeStatus(node)) {
-        NodeStatus.OK -> colorResource(R.color.green_500)
-        NodeStatus.MESH_ONLY -> colorResource(R.color.yellow_500)
-        else -> colorResource(R.color.red_500)
+        NodeStatus.OK -> LocalCustomColorsPalette.current.successColor
+        NodeStatus.MESH_ONLY -> LocalCustomColorsPalette.current.warningColor
+        else -> MaterialTheme.colorScheme.errorContainer
     }
 }
 
@@ -330,11 +335,7 @@ fun activityDesign(
         ) {
             Scaffold(
                 topBar = {
-                    CenterAlignedTopAppBar(
-                        colors = topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            titleContentColor = MaterialTheme.colorScheme.primary,
-                        ),
+                    TopAppBar(
                         title = {
                             Text("Knoten")
                         },
@@ -380,9 +381,9 @@ fun activityDesign(
                         },
                         containerColor =
                         if (wifiScanService!!.scanningEnabled.value)
-                            colorResource(R.color.red_500)
+                            MaterialTheme.colorScheme.errorContainer
                         else
-                            colorResource(R.color.green_500)
+                            MaterialTheme.colorScheme.primary
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.wifi_find),
@@ -403,15 +404,11 @@ fun activityDesign(
                 LazyColumn(
                     modifier = Modifier
                         .padding(innerPadding),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-
                 ) {
-                    scanResultsList.scanResults.let {
-                        itemsIndexed(scanResultsList.scanResults) { index, item ->
-                            ScanResultListElement(
-                                node = item
-                            )
-                        }
+                    itemsIndexed(scanResultsList.scanResults) { index, item ->
+                        ScanResultListElement(
+                            node = item
+                        )
                     }
                 }
             }
@@ -563,13 +560,13 @@ fun ScanResultListElement(node: GluonNode) {
             .clickable {
                 showBottomSheet.value = true
             }
-            .padding(8.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    )
     {
         Row (
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp)
         ) {
             Column(
                 modifier = Modifier.weight(1f)

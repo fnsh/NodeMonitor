@@ -9,33 +9,48 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+
+/**
+ * Provider for colors that are not in the standard material 3 theme.
+ */
+@Immutable
+data class CustomColorsPalette(
+    val successColor: Color = Color.Unspecified,
+    val warningColor: Color = Color.Unspecified
+)
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
     secondary = PurpleGrey80,
     tertiary = Pink80
 )
+private val DarkCustomColorsPalette = CustomColorsPalette(
+    successColor = Green80,
+    warningColor = Yellow80,
+)
 
 private val LightColorScheme = lightColorScheme(
     primary = Purple40,
     secondary = PurpleGrey40,
     tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
 )
+private val LightCustomColorsPalette = CustomColorsPalette(
+    successColor = Green40,
+    warningColor = Yellow40,
+)
+
+// make colors usable in @Composable functions, see https://developer.android.com/develop/ui/compose/compositionlocal
+val LocalCustomColorsPalette = staticCompositionLocalOf { CustomColorsPalette() }
+
 
 @Composable
 fun NodeWhispererTheme(
@@ -53,18 +68,14 @@ fun NodeWhispererTheme(
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
-        }
-    }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    val customPalette = if (darkTheme) DarkCustomColorsPalette else LightCustomColorsPalette
+
+    CompositionLocalProvider(LocalCustomColorsPalette provides customPalette) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }
