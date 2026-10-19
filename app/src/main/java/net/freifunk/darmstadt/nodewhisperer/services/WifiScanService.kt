@@ -88,7 +88,7 @@ class WifiScanService(context: Context) {
             intentFilter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
             context.registerReceiver(wifiScanReceiver, intentFilter)
 
-            receiverRegistered = false
+            receiverRegistered = true
         }
 
         scanningEnabled.value = true
