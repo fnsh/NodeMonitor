@@ -27,4 +27,9 @@
     <string name="global_unknown">Unknown</string>
     <string name="url_help">https://github.com/freifunk-darmstadt/NodeMonitor/blob/master/docs/data-privacy.md</string>
     <string name="msg_permission_request">Bitte erteilen Sie die benötigten Berechtigungen</string>
+    <string name="scan_status_last_scan">Letzter Scan vor %s</string>
+    <string name="scan_status_waiting">Warte auf Scan\u2026</string>
+    <string name="scan_status_seconds">%d Sek.</string>
+    <string name="scan_status_minutes">%d Min.</string>
+    <string name="wifi_scan_throttled">Wi-Fi Scan Drosselung des Systems aktiv</string>
 </resources>

@@ -3,10 +3,8 @@
 package net.freifunk.darmstadt.nodewhisperer
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -14,7 +12,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresPermission
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,13 +34,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -51,23 +52,29 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import net.freifunk.darmstadt.nodewhisperer.models.GluonNode
 import net.freifunk.darmstadt.nodewhisperer.models.ScanResultListModel
 import net.freifunk.darmstadt.nodewhisperer.models.WifiScanResult
@@ -82,12 +89,11 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.FileNotFoundException
-import java.lang.StringBuilder
 
 
 class MainActivity : ComponentActivity() {
     val scanResultListModel = ScanResultListModel()
-    val wifiScanService = WifiScanService(this)
+    val wifiScanService = WifiScanService(this, lifecycleScope)
     val communityService = CommunityService(this)
     private val wifiScanReceiver = object : WifiScanServiceResultReceiver {
         override fun onScanResultUpdate(wifiScanResults: List<WifiScanResult>) {
@@ -324,7 +330,7 @@ fun getIconForNodeStatus(node: GluonNode): ImageVector {
 @Composable
 fun activityDesign(
     activity: MainActivity,
-    wifiScanService: WifiScanService? = null,
+    wifiScanService: WifiScanService,
     scanResultsList: ScanResultListModel = ScanResultListModel()
 ) {
     NodeWhispererTheme {
@@ -374,13 +380,13 @@ fun activityDesign(
                     ExtendedFloatingActionButton(
                         onClick = {
                             if (activity.haveAllPermissions()) {
-                                toggleScanState(wifiScanService!!, scanResultsList)
-                            } else if (wifiScanService != null && !wifiScanService.scanningEnabled.value) {
+                                toggleScanState(wifiScanService, scanResultsList)
+                            } else if (!wifiScanService.scanningEnabled.value) {
                                 activity.permissionToast()
                             }
                         },
                         containerColor =
-                        if (wifiScanService!!.scanningEnabled.value)
+                        if (wifiScanService.scanningEnabled.value)
                             MaterialTheme.colorScheme.errorContainer
                         else
                             MaterialTheme.colorScheme.primary
@@ -392,7 +398,7 @@ fun activityDesign(
                         )
                         Text(
                             text =
-                            if (wifiScanService!!.scanningEnabled.value)
+                            if (wifiScanService.scanningEnabled.value)
                                 stringResource(R.string.fab_scan_stop)
                             else
                                 stringResource(R.string.fab_scan_start),
@@ -401,14 +407,16 @@ fun activityDesign(
                     }
                 }
             ) { innerPadding ->
-                LazyColumn(
-                    modifier = Modifier
-                        .padding(innerPadding),
-                ) {
-                    itemsIndexed(scanResultsList.scanResults) { index, item ->
-                        ScanResultListElement(
-                            node = item
-                        )
+                Column(modifier = Modifier.padding(innerPadding)) {
+                    ScanStatusBar(wifiScanService)
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        itemsIndexed(scanResultsList.scanResults) { index, item ->
+                            ScanResultListElement(
+                                node = item
+                            )
+                        }
                     }
                 }
             }
@@ -546,6 +554,113 @@ fun NodeInfoDialogProperty(name: String, content: String) {
             text = content,
             textAlign = TextAlign.Start,
         )
+    }
+}
+
+@Composable
+fun ScanStatusBar(wifiScanService: WifiScanService) {
+    val isEnabled = wifiScanService.scanningEnabled.value
+    val lastTimestamp = wifiScanService.lastScanTimestamp.value
+    val barColor = MaterialTheme.colorScheme.secondary
+    val isThrottled = wifiScanService.scanThrottleEnabled.value
+
+    if (!isEnabled) {
+        return
+    }
+
+    if (lastTimestamp == null) {
+        ScanStatusRow(
+            text = stringResource(R.string.scan_status_waiting),
+            color = barColor,
+            isThrottled = isThrottled
+        )
+        return
+    }
+
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1000L)
+            now = System.currentTimeMillis()
+        }
+    }
+
+    val elapsedSec = ((now - lastTimestamp) / 1000).toInt()
+    val elapsedText = if (elapsedSec < 60) {
+        stringResource(R.string.scan_status_seconds, elapsedSec)
+    } else {
+        stringResource(R.string.scan_status_minutes, elapsedSec / 60)
+    }
+
+    val progress: Float? = if (isThrottled) (elapsedSec / WifiScanService.THROTTLED_SCAN_INTERVAL_SEC.toFloat()).coerceIn(0f, 1f) else null
+
+    ScanStatusRow(
+        text = stringResource(R.string.scan_status_last_scan, elapsedText),
+        color = barColor,
+        isThrottled = isThrottled,
+        progress = progress
+    )
+}
+
+@Composable
+fun ScanStatusRow(text: String, color: Color, isThrottled: Boolean, progress: Float? = null) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        if (progress != null) {
+            val animatedProgress by animateFloatAsState(
+                targetValue = progress,
+                animationSpec = tween(durationMillis = 1000, easing = LinearEasing),
+                label = "scanStaleness"
+            )
+            LinearProgressIndicator(
+                progress = { animatedProgress },
+                modifier = Modifier.fillMaxWidth(),
+                color = color,
+                trackColor = color.copy(alpha = 0.3f),
+                drawStopIndicator = {}
+            )
+        } else {
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth(),
+                color = color,
+                trackColor = color.copy(alpha = 0.3f)
+            )
+        }
+        Box(modifier = Modifier.fillMaxWidth()) {
+            if (isThrottled) {
+                Row(
+                    modifier = Modifier.align(Alignment.CenterStart),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val iconSize = with(LocalDensity.current) {
+                        MaterialTheme.typography.labelSmall.fontSize.toDp()
+                    }
+                    Icon(
+                        modifier = Modifier.size(iconSize),
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Text(
+                        text = stringResource(R.string.wifi_scan_throttled),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+            Text(
+                modifier = Modifier.align(Alignment.CenterEnd),
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 
