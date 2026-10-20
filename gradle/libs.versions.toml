@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.2"
+agp = "9.4.1"
 kotlin = "2.3.20"
 coreKtx = "1.18.0"
 junit = "4.13.2"
@@ -28,6 +28,5 @@ androidx-material-icons-core = { group = "androidx.compose.material", name = "ma
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
-jetbrainsKotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlinCompose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 
