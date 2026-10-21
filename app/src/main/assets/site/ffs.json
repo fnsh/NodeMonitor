@@ -1,0 +1,7 @@
+{
+  "site_code": "ffs",
+  "name": "Freifunk Stuttgart",
+  "short_name": "ffs",
+  "domain_names": { "https://freifunk-stuttgart.de",
+  }
+}
