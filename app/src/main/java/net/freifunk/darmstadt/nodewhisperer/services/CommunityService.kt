@@ -33,7 +33,8 @@ class CommunityService {
         for (key in domainNamesJson.keys()) {
             domainNames[key] = domainNamesJson.getString(key)
         }
+        val mapUrl = if (jsonObject.isNull("map_url")) null else jsonObject.getString("map_url")
 
-        return CommunityInformation(siteCode, name, shortName, domainNames)
+        return CommunityInformation(siteCode, name, shortName, domainNames, mapUrl)
     }
 }

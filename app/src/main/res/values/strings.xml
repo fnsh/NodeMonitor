@@ -13,6 +13,7 @@
     <string name="node_nodes_in_network">Knoten im Netz</string>
     <string name="node_clients">Clients</string>
     <string name="node_title_information">Informationen</string>
+    <string name="node_show_on_map">Auf Karte anzeigen</string>
     <string name="node_status_okay">Alles in Ordnung</string>
     <string name="node_status_mesh_only">Keine Direkte Internetverbindung</string>
     <string name="node_status_mesh_only_description">Der Knoten ist im Mesh-Netzwerk aktiv. Ob das Mesh-Netzwerk einen Internetzugang hat, kann nicht geprüft werden.</string>
@@ -27,6 +28,7 @@
     <string name="global_unknown">Unknown</string>
     <string name="url_help">https://github.com/freifunk-darmstadt/NodeMonitor/blob/master/docs/data-privacy.md</string>
     <string name="msg_permission_request">Bitte erteilen Sie die benötigten Berechtigungen</string>
+    <string name="msg_no_app_for_url">Keine App zum Öffnen des Links gefunden</string>
     <string name="scan_status_last_scan">Letzter Scan vor %s</string>
     <string name="scan_status_waiting">Warte auf Scan\u2026</string>
     <string name="scan_status_seconds">%d Sek.</string>
