@@ -2,6 +2,7 @@
   "site_code": "ffmuc",
   "name": "Freifunk München",
   "short_name": "München",
+  "map_url": "https://map.ffmuc.net/#/map/{NODE_ID}",
   "domain_names": {
     "ffdlg_dlg": "Dillingen - City",
     "ffdon_mitte": "Freifunk Donau-Ries - Mitte",

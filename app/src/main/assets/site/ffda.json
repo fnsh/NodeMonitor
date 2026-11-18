@@ -2,6 +2,7 @@
   "site_code": "ffda",
   "name": "Freifunk Darmstadt",
   "short_name": "Darmstadt",
+  "map_url": "https://meshviewer.darmstadt.freifunk.net/#/map/{NODE_ID}",
   "domain_names": {
     "dom0": "Domain 0",
     "ffda_default": "Default",
