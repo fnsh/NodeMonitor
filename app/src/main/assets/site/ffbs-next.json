@@ -2,6 +2,7 @@
   "site_code": "ffbs-next",
   "name": "Freifunk Braunschweig",
   "short_name": "Freifunk Braunschweig",
+  "map_url": "https://freifunk-bs.de/map/#/map/{NODE_ID}",
   "domain_names": {
   }
 }

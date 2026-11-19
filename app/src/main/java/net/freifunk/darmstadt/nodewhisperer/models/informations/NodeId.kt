@@ -13,8 +13,17 @@ class NodeId {
         this.macAddress = macAddress
     }
 
+    /* Format of Gluon's node_id, as used by respondd and the maps */
+    fun toGluonNodeId(): String {
+        return toHexString("")
+    }
+
     override fun toString(): String {
-        return macAddress.joinToString(":") {
+        return toHexString(":")
+    }
+
+    private fun toHexString(separator: String): String {
+        return macAddress.joinToString(separator) {
             it.toUByte().toString(16).padStart(2, '0')
         }
     }
