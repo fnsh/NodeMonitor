@@ -1,0 +1,62 @@
+name: Build and release app
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*"
+
+jobs:
+  build:
+    name: Build, sign and release app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK
+        uses: actions/setup-java@v6
+        with:
+          distribution: "temurin"
+          java-version: 25
+          cache: "gradle"
+
+      - name: Build APK
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Sign APK
+        uses: ilharp/sign-android-release@v2
+        id: sign
+        with:
+          signingKey: ${{ secrets.ANDROID_RELEASE_SIGNING_KEY }}
+          keyAlias: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.ANDROID_RELEASE_KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+          buildToolsVersion: 35.0.0
+
+      - name: Rename apk file
+        run: mv "${{ steps.sign.outputs.signedFile }}" "app-release.apk"
+
+      - name: Create changelog summary
+        id: changelog-summary
+        run: |
+          summary_file=$(find fastlane/metadata/android/en-US/changelogs/ | sort -t '/' -k 6n | tail -n 1)
+          summary=$(cat "$summary_file" && echo -e "What's changed\n$summary_quoted")
+          echo "summary<<EOF"$'\n'"$summary"$'\n'EOF >> $GITHUB_OUTPUT
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: ${{ steps.changelog-summary.outputs.summary }}
+          files: "app-release.apk"
+          fail_on_unmatched_files: true
+          make_latest: true
+
+      - name: Upload Android Release to Play Store
+        uses: r0adkll/upload-google-play@v1
+        with:
+          # serviceAccountJsonPlainText: ${{ SERVICE_ACCOUNT_JSON }}
+          releaseFiles: app-release.apk
+          packageName: net.freifunk.darmstadt.nodewhisperer
+          releaseName: tagname
